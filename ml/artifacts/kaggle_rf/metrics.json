@@ -1,0 +1,48 @@
+{
+  "dataset": "data/symptom-based-disease-prediction-dataset/disease_prediction.csv",
+  "model_family": "random_forest",
+  "best_params": {
+    "model__max_depth": 8,
+    "model__min_samples_split": 5,
+    "model__n_estimators": 150
+  },
+  "cv_best_score": 0.8899493116395494,
+  "test_accuracy": 0.881,
+  "test_f1_weighted": 0.881,
+  "classification_report": {
+    "Malaria": {
+      "precision": 0.8468468468468469,
+      "recall": 0.8468468468468469,
+      "f1-score": 0.8468468468468469,
+      "support": 333.0
+    },
+    "Pneumonia": {
+      "precision": 0.9069069069069069,
+      "recall": 0.9069069069069069,
+      "f1-score": 0.9069069069069069,
+      "support": 333.0
+    },
+    "Typhoid": {
+      "precision": 0.8892215568862275,
+      "recall": 0.8892215568862275,
+      "f1-score": 0.8892215568862275,
+      "support": 334.0
+    },
+    "accuracy": 0.881,
+    "macro avg": {
+      "precision": 0.8809917702133271,
+      "recall": 0.8809917702133271,
+      "f1-score": 0.8809917702133271,
+      "support": 1000.0
+    },
+    "weighted avg": {
+      "precision": 0.881,
+      "recall": 0.881,
+      "f1-score": 0.881,
+      "support": 1000.0
+    }
+  },
+  "feature_count": 15,
+  "train_samples": 3998,
+  "test_samples": 1000
+}

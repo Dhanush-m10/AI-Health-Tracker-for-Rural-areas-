@@ -68,7 +68,7 @@ export default function App() {
       const result = await analyzeSymptoms(symptoms, ageGroup, gender, location);
       setReport(result);
     } catch (err) {
-      setError("Something went wrong. Please try again.");
+      setError("Could not analyze symptoms. Ensure backend is running and try again.");
       console.error(err);
     } finally {
       setIsLoading(false);

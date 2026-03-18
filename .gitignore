@@ -6,3 +6,8 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Generated ML training artifacts
+ml/artifacts/*.joblib
+ml/artifacts/**/*.joblib
+ml/artifacts/label_classes.json
