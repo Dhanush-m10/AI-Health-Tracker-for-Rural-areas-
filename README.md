@@ -1,6 +1,6 @@
-# MDroid AI Health Tracker for Rural Areas
+# AI Health Tracker for Rural Areas
 
-MDroid is an AI-powered health symptom checker built for rural and low-resource settings.
+AI-powered health symptom checker built for rural and low-resource settings.
 It combines a modern React frontend with a Python machine learning backend to provide fast, practical guidance from symptom inputs.
 
 ## What This Project Does
