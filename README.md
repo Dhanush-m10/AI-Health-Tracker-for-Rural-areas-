@@ -1,130 +1,180 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# MDroid AI Health Tracker for Rural Areas
 
-# Run and deploy your AI Studio app
+MDroid is an AI-powered health symptom checker built for rural and low-resource settings.
+It combines a modern React frontend with a Python machine learning backend to provide fast, practical guidance from symptom inputs.
 
-This contains everything you need to run your app locally.
+## What This Project Does
 
-View your app in AI Studio: https://ai.studio/apps/69915254-4542-4dae-9d28-59be466d3585
+- Collects symptom descriptions from users
+- Converts symptoms into model-ready features
+- Predicts likely conditions using a trained ML model
+- Shows an easy-to-read report with:
+   - detected symptoms
+   - possible conditions
+   - recommended precautions
+   - when to see a doctor
 
-## Run Locally
+## Core Highlights
 
-**Prerequisites:**  Node.js
+- One-command local startup (frontend + backend together)
+- One-link app usage in browser (frontend proxies backend under /api)
+- Unified Python backend entrypoint for training, API, and Streamlit mode
+- Reproducible training workflow with model comparison
+- Built for practical UX and deployability
 
+## Tech Stack
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+- Frontend: React, TypeScript, Vite, Tailwind CSS, Motion
+- Backend/API: Python, FastAPI, Uvicorn
+- ML: scikit-learn, pandas, joblib, optional XGBoost
+- Optional UI mode: Streamlit
 
-`npm run dev` now starts both:
+## Project Structure
 
-- Frontend: `http://localhost:3000`
-- ML backend API: `http://localhost:8000`
+```text
+src/                       React frontend
+ml/main.py                 Unified Python entrypoint
+ml/requirements.txt        Python dependencies
+ml/artifacts/              Trained model and metrics output
+scripts/dev-all.js         Starts frontend + backend together
+package.json               Node scripts and frontend deps
+```
 
-The frontend uses a proxy (`/api`) to call the backend, so you only need to open the frontend URL.
+## Quick Start
 
-Optional individual commands:
+### Prerequisites
 
-- `npm run dev:web` (frontend only)
-- `npm run dev:api` (backend only)
+- Node.js 18+
+- Python 3.10+
 
-Optional backend target override:
+### 1) Install frontend dependencies
 
-- `VITE_BACKEND_TARGET=http://localhost:8000`
+```bash
+npm install
+```
 
-## Python ML Training
-
-This project now includes a unified Python entrypoint in `ml/main.py`.
-
-### 1) Install ML dependencies
+### 2) Install Python dependencies
 
 ```bash
 pip install -r ml/requirements.txt
 ```
 
-### 2) Train with built-in dataset (quick start)
-
-```bash
-python ml/main.py train
-```
-
-This uses the `sklearn` breast cancer dataset to verify the training pipeline and produce metrics.
-
-### 3) Train with your own dataset
-
-Use a CSV where one column is the prediction target (label).
-
-```bash
-python ml/main.py train --dataset path/to/your_dataset.csv --target target_column_name
-```
-
-Optional arguments:
-
-- `--model random_forest` (default) or `--model log_reg`
-- `--model xgboost` (if installed)
-- `--model compare` to auto-try all available models and keep the best
-- `--test-size 0.2`
-- `--random-state 42`
-- `--output-dir ml/artifacts`
-
-### Outputs
-
-After training, artifacts are saved in `ml/artifacts`:
-
-- `best_model.joblib`: trained model
-- `metrics.json`: accuracy, F1, best params, and classification details
-- `label_classes.json`: class names (only for string labels)
-
-## Streamlit Inference App
-
-After training, run the local prediction UI with Streamlit:
-
-```bash
-streamlit run ml/main.py
-```
-
-or
-
-```bash
-python ml/main.py streamlit
-```
-
-This app loads:
-
-- `ml/artifacts/best_model.joblib`
-- `ml/artifacts/metrics.json`
-
-Then lets you enter symptom values and get predicted disease plus confidence scores.
-
-## Integrate Model With Existing React UI
-
-The existing symptom checker UI in `src/` is now wired to the trained ML model through a local Python API.
-
-### 1) Start ML inference API
-
-```bash
-python ml/main.py api --host 0.0.0.0 --port 8000
-```
-
-or
-
-```bash
-python -m uvicorn ml.main:app --host 0.0.0.0 --port 8000
-```
-
-### 2) Start frontend
+### 3) Run the full app
 
 ```bash
 npm run dev
 ```
 
-By default, frontend calls `http://localhost:8000`.
+This command starts both services:
 
-Optional: set a custom endpoint in `.env.local`:
+- Frontend: http://localhost:3000 (or next free port)
+- Backend API: http://localhost:8000
+
+Open the frontend URL only. Backend calls are routed through /api, so it behaves like one integrated app link.
+
+## Run Modes
+
+### Full stack
 
 ```bash
-VITE_ML_API_URL=http://localhost:8000
+npm run dev
 ```
+
+### Frontend only
+
+```bash
+npm run dev:web
+```
+
+### Backend only
+
+```bash
+npm run dev:api
+```
+
+## ML Training
+
+All backend modes are provided by ml/main.py.
+
+### Train on built-in sample dataset
+
+```bash
+python ml/main.py train
+```
+
+### Train on your CSV
+
+```bash
+python ml/main.py train --dataset path/to/your_dataset.csv --target label_column
+```
+
+### Compare models and keep best
+
+```bash
+python ml/main.py train --dataset data/symptom-based-disease-prediction-dataset/disease_prediction.csv --target label --model compare
+```
+
+### Useful training options
+
+- --model random_forest|log_reg|xgboost|compare
+- --test-size 0.2
+- --random-state 42
+- --output-dir ml/artifacts
+
+### Training output files
+
+- ml/artifacts/best_model.joblib
+- ml/artifacts/metrics.json
+- ml/artifacts/label_classes.json (when labels are string-based)
+
+## Backend API
+
+### Main endpoints
+
+- GET /health
+- POST /predict
+
+### Through frontend proxy
+
+- GET /api/health
+- POST /api/predict
+
+## Streamlit Mode (Optional)
+
+You can run a Streamlit-based prediction UI from the same unified backend file:
+
+```bash
+python ml/main.py streamlit
+```
+
+If needed, set a specific Streamlit port:
+
+```bash
+python -m streamlit run ml/main.py --server.port 8765
+```
+
+## Configuration
+
+Optional backend target override for Vite proxy:
+
+```bash
+VITE_BACKEND_TARGET=http://localhost:8000
+```
+
+## Troubleshooting
+
+- Frontend starts on a different port:
+   - if 3000 is busy, Vite auto-selects 3001, 3002, etc.
+- Backend port conflict:
+   - change backend port in run command or stop old process
+- TypeScript command not found:
+   - run npm install first
+- Backend health test:
+
+```bash
+curl http://localhost:8000/health
+```
+
+## Disclaimer
+
+This application provides informational guidance only and is not a substitute for licensed medical diagnosis, treatment, or emergency care.
