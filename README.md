@@ -121,6 +121,12 @@ python ml/main.py train --dataset data/symptom-based-disease-prediction-dataset/
 - --random-state 42
 - --output-dir ml/artifacts
 
+Optional local dependency for advanced model experiments:
+
+```bash
+pip install xgboost
+```
+
 ### Training output files
 
 - ml/artifacts/best_model.joblib
@@ -160,6 +166,12 @@ streamlit run main.py
 ```
 
 This root file is deployment-compatible and also exposes `main:api` for platforms that auto-detect ASGI apps.
+
+Recommended Streamlit Cloud settings:
+
+- Main file path: `main.py`
+- Python version: from `runtime.txt` (3.11)
+- Requirements file: root `requirements.txt`
 
 ## Configuration
 
