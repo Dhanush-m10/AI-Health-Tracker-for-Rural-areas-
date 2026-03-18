@@ -1,0 +1,5 @@
+{
+  "name": "AI Health Symptom Checker for Rural Areas",
+  "description": "A simple, AI-powered health symptom checker designed for rural communities to get basic health guidance and find nearby medical facilities.",
+  "requestFramePermissions": ["geolocation"]
+}
