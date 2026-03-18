@@ -34,7 +34,7 @@ It combines a modern React frontend with a Python machine learning backend to pr
 ```text
 src/                       React frontend
 ml/main.py                 Unified Python entrypoint
-ml/requirements.txt        Python dependencies
+requirements.txt           Python dependencies
 ml/artifacts/              Trained model and metrics output
 scripts/dev-all.js         Starts frontend + backend together
 package.json               Node scripts and frontend deps
@@ -56,7 +56,7 @@ npm install
 ### 2) Install Python dependencies
 
 ```bash
-pip install -r ml/requirements.txt
+pip install -r requirements.txt
 ```
 
 ### 3) Run the full app
