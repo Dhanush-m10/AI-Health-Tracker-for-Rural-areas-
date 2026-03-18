@@ -153,6 +153,14 @@ If needed, set a specific Streamlit port:
 python -m streamlit run ml/main.py --server.port 8765
 ```
 
+For hosted deployment environments, use the repository root entrypoint:
+
+```bash
+streamlit run main.py
+```
+
+This root file is deployment-compatible and also exposes `main:api` for platforms that auto-detect ASGI apps.
+
 ## Configuration
 
 Optional backend target override for Vite proxy:
@@ -174,6 +182,10 @@ VITE_BACKEND_TARGET=http://localhost:8000
 ```bash
 curl http://localhost:8000/health
 ```
+
+- Streamlit deploy error: `Attribute "api" not found in module "main"`
+   - Ensure deployment command is `streamlit run main.py`
+   - Do not point deployment at `ml/main.py` unless explicitly configured for that path
 
 ## Disclaimer
 
