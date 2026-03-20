@@ -76,7 +76,7 @@ process.on('SIGTERM', () => shutdown(0));
 
 console.log(`Using Python executable: ${pythonCmd}`);
 console.log('Starting backend API on http://localhost:8000 ...');
-startProcess(`"${pythonCmd}" ml/main.py api --host 0.0.0.0 --port 8000`, 'backend');
+startProcess(`"${pythonCmd}" main.py api --host 0.0.0.0 --port 8000`, 'backend');
 
 console.log('Starting frontend on http://localhost:3000 ...');
 startProcess(`${npmCmd} run dev:web`, 'frontend');

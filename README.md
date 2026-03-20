@@ -33,7 +33,7 @@ It combines a modern React frontend with a Python machine learning backend to pr
 
 ```text
 src/                       React frontend
-ml/main.py                 Unified Python entrypoint
+main.py                    Unified Python entrypoint
 requirements.txt           Python dependencies
 ml/artifacts/              Trained model and metrics output
 scripts/dev-all.js         Starts frontend + backend together
@@ -94,24 +94,24 @@ npm run dev:api
 
 ## ML Training
 
-All backend modes are provided by ml/main.py.
+All backend modes are provided by main.py.
 
 ### Train on built-in sample dataset
 
 ```bash
-python ml/main.py train
+python main.py train
 ```
 
 ### Train on your CSV
 
 ```bash
-python ml/main.py train --dataset path/to/your_dataset.csv --target label_column
+python main.py train --dataset path/to/your_dataset.csv --target label_column
 ```
 
 ### Compare models and keep best
 
 ```bash
-python ml/main.py train --dataset data/symptom-based-disease-prediction-dataset/disease_prediction.csv --target label --model compare
+python main.py train --dataset data/symptom-based-disease-prediction-dataset/disease_prediction.csv --target label --model compare
 ```
 
 ### Useful training options
@@ -150,13 +150,13 @@ pip install xgboost
 You can run a Streamlit-based prediction UI from the same unified backend file:
 
 ```bash
-python ml/main.py streamlit
+python main.py streamlit
 ```
 
 If needed, set a specific Streamlit port:
 
 ```bash
-python -m streamlit run ml/main.py --server.port 8765
+python -m streamlit run main.py --server.port 8765
 ```
 
 For hosted deployment environments, use the repository root entrypoint:
@@ -197,7 +197,7 @@ curl http://localhost:8000/health
 
 - Streamlit deploy error: `Attribute "api" not found in module "main"`
    - Ensure deployment command is `streamlit run main.py`
-   - Do not point deployment at `ml/main.py` unless explicitly configured for that path
+   - If you still use `ml/main.py`, it now forwards to root `main.py`
 
 ## Disclaimer
 
