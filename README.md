@@ -197,7 +197,6 @@ curl http://localhost:8000/health
 
 - Streamlit deploy error: `Attribute "api" not found in module "main"`
    - Ensure deployment command is `streamlit run main.py`
-   - If you still use `ml/main.py`, it now forwards to root `main.py`
 
 ## Disclaimer
 
