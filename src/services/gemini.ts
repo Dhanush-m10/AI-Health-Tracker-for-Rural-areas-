@@ -10,7 +10,7 @@ type ModelPredictResponse = {
   probabilities: ModelProbability[];
 };
 
-const API_BASE_URL = import.meta.env.VITE_ML_API_URL || "/api";
+const API_BASE_URL = (import.meta.env.VITE_ML_API_URL || "/api").replace(/\/$/, "");
 
 const FEATURE_NAMES = [
   "fever",
@@ -136,28 +136,54 @@ export async function analyzeSymptoms(
   const featurePayload = buildFeaturePayload(symptoms);
   const detectedSymptoms = parseDetectedSymptoms(symptoms);
 
-  const response = await fetch(`${API_BASE_URL}/predict`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
+  const payload = {
+    features: featurePayload,
+    top_k: 3,
+    context: {
+      ageGroup,
+      gender,
+      location,
     },
-    body: JSON.stringify({
-      features: featurePayload,
-      top_k: 3,
-      context: {
-        ageGroup,
-        gender,
-        location,
-      },
-    }),
-  });
+  };
 
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(`Model API error: ${detail}`);
+  const baseCandidates = Array.from(new Set([API_BASE_URL, ""]));
+  let lastError = "Model API endpoint is unavailable.";
+  let result: ModelPredictResponse | null = null;
+
+  for (const base of baseCandidates) {
+    const endpoint = `${base}/predict`;
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (response.ok) {
+      result = (await response.json()) as ModelPredictResponse;
+      break;
+    }
+
+    let detail = "";
+    try {
+      const errJson = (await response.json()) as { detail?: string };
+      detail = errJson?.detail || "";
+    } catch {
+      detail = (await response.text()).trim();
+    }
+
+    if (response.status === 404) {
+      lastError = detail || `Endpoint not found at ${endpoint}`;
+      continue;
+    }
+
+    throw new Error(`Model API error (${response.status}): ${detail || "Unknown error"}`);
   }
 
-  const result = (await response.json()) as ModelPredictResponse;
+  if (!result) {
+    throw new Error(`Model API error: ${lastError}`);
+  }
   const topCandidates = result.probabilities.length
     ? result.probabilities
     : [{ label: result.predicted_label, probability: 1 }];
