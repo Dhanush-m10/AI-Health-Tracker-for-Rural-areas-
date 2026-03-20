@@ -11,6 +11,7 @@ import streamlit as st
 import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 from sklearn.compose import ColumnTransformer
 from sklearn.datasets import load_breast_cancer
@@ -34,6 +35,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent
 DEFAULT_ARTIFACTS_DIR = PROJECT_ROOT / "ml" / "artifacts"
 DEFAULT_MODEL_PATH = DEFAULT_ARTIFACTS_DIR / "best_model.joblib"
 DEFAULT_METRICS_PATH = DEFAULT_ARTIFACTS_DIR / "metrics.json"
+DEFAULT_FRONTEND_DIST = PROJECT_ROOT / "dist"
 
 
 def load_dataset(dataset_path: Optional[str], target_col: str) -> tuple[pd.DataFrame, pd.Series]:
@@ -342,8 +344,7 @@ def create_api_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    @api.get("/health")
-    def health() -> dict[str, Any]:
+    def health_payload() -> dict[str, Any]:
         load_inference_assets()
         return {
             "status": "ok",
@@ -352,8 +353,7 @@ def create_api_app() -> FastAPI:
             "labels": MODEL_CACHE["label_names"],
         }
 
-    @api.post("/predict", response_model=PredictResponse)
-    def predict(request: PredictRequest) -> PredictResponse:
+    def predict_payload(request: PredictRequest) -> PredictResponse:
         load_inference_assets()
 
         feature_names = MODEL_CACHE["feature_names"]
@@ -389,6 +389,40 @@ def create_api_app() -> FastAPI:
         pairs.sort(key=lambda item: item["probability"], reverse=True)
 
         return PredictResponse(predicted_label=predicted_label, probabilities=pairs[: request.top_k])
+
+    @api.get("/health")
+    def health() -> dict[str, Any]:
+        return health_payload()
+
+    @api.get("/api/health")
+    def health_api() -> dict[str, Any]:
+        return health_payload()
+
+    @api.post("/predict", response_model=PredictResponse)
+    def predict(request: PredictRequest) -> PredictResponse:
+        return predict_payload(request)
+
+    @api.post("/api/predict", response_model=PredictResponse)
+    def predict_api(request: PredictRequest) -> PredictResponse:
+        return predict_payload(request)
+
+    if DEFAULT_FRONTEND_DIST.exists():
+        index_file = DEFAULT_FRONTEND_DIST / "index.html"
+
+        @api.get("/", include_in_schema=False)
+        def serve_frontend_index() -> FileResponse:
+            return FileResponse(index_file)
+
+        @api.get("/{full_path:path}", include_in_schema=False)
+        def serve_frontend_files(full_path: str) -> FileResponse:
+            if full_path.startswith("api/"):
+                raise HTTPException(status_code=404, detail="Not found")
+
+            candidate = DEFAULT_FRONTEND_DIST / full_path
+            if candidate.exists() and candidate.is_file():
+                return FileResponse(candidate)
+
+            return FileResponse(index_file)
 
     return api
 

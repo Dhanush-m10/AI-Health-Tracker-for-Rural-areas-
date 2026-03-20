@@ -92,6 +92,19 @@ npm run dev:web
 npm run dev:api
 ```
 
+### Single website mode (one URL for frontend + backend)
+
+```bash
+npm run build
+python main.py api --host 0.0.0.0 --port 8000
+```
+
+Then open:
+
+- http://localhost:8000
+
+In this mode, FastAPI serves the built React app and API together from one server.
+
 ## ML Training
 
 All backend modes are provided by main.py.
