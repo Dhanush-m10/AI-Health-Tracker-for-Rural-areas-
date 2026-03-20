@@ -424,7 +424,11 @@ def is_binary_feature(name: str) -> bool:
 
 
 def run_streamlit_ui() -> None:
-    st.set_page_config(page_title="MDroid Symptom Predictor", page_icon="stethoscope", layout="wide")
+    # Streamlit rejects invalid page_icon values; use a valid emoji and fallback safely.
+    try:
+        st.set_page_config(page_title="MDroid Symptom Predictor", page_icon="🩺", layout="wide")
+    except Exception:
+        st.set_page_config(page_title="MDroid Symptom Predictor", layout="wide")
     st.title("MDroid Symptom Predictor")
     st.caption("Unified app: training, API, and Streamlit inference from ml/main.py")
 
