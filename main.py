@@ -1,5 +1,6 @@
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -539,6 +540,11 @@ def run_streamlit_ui() -> None:
 
 
 def running_in_streamlit() -> bool:
+    # In some hosted runs, script context may be unavailable briefly.
+    # Environment variables are a reliable fallback for Streamlit runtime detection.
+    if os.getenv("STREAMLIT_SERVER_PORT") or os.getenv("STREAMLIT_RUNTIME"):
+        return True
+
     try:
         from streamlit.runtime.scriptrunner import get_script_run_ctx
 
