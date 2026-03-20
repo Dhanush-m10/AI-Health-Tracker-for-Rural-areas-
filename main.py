@@ -9,20 +9,6 @@ from typing import Any, Optional
 import joblib
 import pandas as pd
 import streamlit as st
-import uvicorn
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from pydantic import BaseModel, Field
-from sklearn.compose import ColumnTransformer
-from sklearn.datasets import load_breast_cancer
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.impute import SimpleImputer
-from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, f1_score
-from sklearn.model_selection import GridSearchCV, train_test_split
-from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import LabelEncoder, OneHotEncoder, StandardScaler
 
 try:
     from xgboost import XGBClassifier
@@ -56,13 +42,22 @@ def load_dataset(dataset_path: Optional[str], target_col: str) -> tuple[pd.DataF
         x = df.drop(columns=[target_col])
         return x, y
 
+    from sklearn.datasets import load_breast_cancer
+
     breast = load_breast_cancer(as_frame=True)
     x = breast.data.copy()
     y = breast.target.copy()
     return x, y
 
 
-def build_pipeline(x: pd.DataFrame, model_name: str, random_state: int) -> tuple[Pipeline, dict]:
+def build_pipeline(x: pd.DataFrame, model_name: str, random_state: int) -> tuple[Any, dict]:
+    from sklearn.compose import ColumnTransformer
+    from sklearn.ensemble import RandomForestClassifier
+    from sklearn.impute import SimpleImputer
+    from sklearn.linear_model import LogisticRegression
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import OneHotEncoder, StandardScaler
+
     numeric_cols = x.select_dtypes(include=["number"]).columns.tolist()
     categorical_cols = [col for col in x.columns if col not in numeric_cols]
 
@@ -140,7 +135,10 @@ def train_single_model(
     y_test: pd.Series,
     model_name: str,
     random_state: int,
-) -> tuple[dict, Pipeline]:
+) -> tuple[dict, Any]:
+    from sklearn.metrics import accuracy_score, classification_report, f1_score
+    from sklearn.model_selection import GridSearchCV
+
     pipeline, param_grid = build_pipeline(x_train, model_name, random_state)
 
     search = GridSearchCV(
@@ -179,6 +177,9 @@ def run_training(
     random_state: int,
     output_dir: str,
 ) -> None:
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import LabelEncoder
+
     x, y = load_dataset(dataset, target)
 
     label_encoder = None
@@ -201,7 +202,7 @@ def run_training(
         model_candidates.append("xgboost")
 
     if model_name == "compare":
-        candidate_results: list[tuple[dict, Pipeline]] = []
+        candidate_results: list[tuple[dict, Any]] = []
         for candidate in model_candidates:
             print(f"\nTraining candidate model: {candidate}")
             result_payload, model = train_single_model(
@@ -277,16 +278,6 @@ def run_training(
     print(f"Saved metrics: {metrics_path}")
 
 
-class PredictRequest(BaseModel):
-    features: dict[str, float] = Field(..., description="Feature map for prediction")
-    top_k: int = Field(default=3, ge=1, le=10)
-
-
-class PredictResponse(BaseModel):
-    predicted_label: str
-    probabilities: list[dict[str, Any]]
-
-
 MODEL_CACHE: dict[str, Any] = {
     "model": None,
     "metrics": {},
@@ -335,7 +326,20 @@ def load_inference_assets(model_path: Path = DEFAULT_MODEL_PATH, metrics_path: P
     MODEL_CACHE["label_names"] = label_names
 
 
-def create_api_app() -> FastAPI:
+def create_api_app() -> Any:
+    from fastapi import FastAPI, HTTPException
+    from fastapi.middleware.cors import CORSMiddleware
+    from fastapi.responses import FileResponse
+    from pydantic import BaseModel, Field
+
+    class PredictRequest(BaseModel):
+        features: dict[str, float] = Field(..., description="Feature map for prediction")
+        top_k: int = Field(default=3, ge=1, le=10)
+
+    class PredictResponse(BaseModel):
+        predicted_label: str
+        probabilities: list[dict[str, Any]]
+
     api = FastAPI(title="MDroid ML Inference API", version="1.0.0")
     api.add_middleware(
         CORSMiddleware,
@@ -428,9 +432,23 @@ def create_api_app() -> FastAPI:
     return api
 
 
-app = create_api_app()
-# Keep compatibility for loaders expecting main:api
-api = app
+_API_APP: Optional[Any] = None
+
+
+def get_api_app() -> Any:
+    global _API_APP
+    if _API_APP is None:
+        _API_APP = create_api_app()
+    return _API_APP
+
+
+try:
+    app = get_api_app()
+    api = app
+except Exception:
+    # Streamlit mode should still boot even if API dependencies fail to import.
+    app = None
+    api = None
 
 
 @st.cache_resource
@@ -597,7 +615,9 @@ def run_cli() -> None:
         return
 
     if args.command == "api":
-        uvicorn.run(app, host=args.host, port=args.port, reload=False)
+        import uvicorn
+
+        uvicorn.run(get_api_app(), host=args.host, port=args.port, reload=False)
         return
 
     if args.command == "streamlit":

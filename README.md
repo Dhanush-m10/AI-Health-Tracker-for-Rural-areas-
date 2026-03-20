@@ -185,6 +185,14 @@ Recommended Streamlit Cloud settings:
 - Main file path: `main.py`
 - Python version: from `runtime.txt` (3.11)
 - Requirements file: root `requirements.txt`
+- Do not set a custom start command; let Streamlit Cloud run `streamlit run main.py`.
+
+If Cloud shows `connect: connection refused` on `/healthz`:
+
+1. Verify `main.py` is selected as the entry file.
+2. Reboot app once after deployment.
+3. If still failing, clear cache and redeploy.
+4. Confirm no old branch/commit is being deployed.
 
 ## Configuration
 
