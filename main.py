@@ -606,7 +606,10 @@ def run_cli() -> None:
 
 
 if __name__ == "__main__":
-    if running_in_streamlit():
+    cli_commands = {"train", "api", "streamlit"}
+    has_explicit_cli_command = len(sys.argv) > 1 and sys.argv[1] in cli_commands
+
+    if running_in_streamlit() or not has_explicit_cli_command:
         run_streamlit_ui()
     else:
         run_cli()
