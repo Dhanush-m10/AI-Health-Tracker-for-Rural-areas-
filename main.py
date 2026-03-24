@@ -477,6 +477,119 @@ def is_binary_feature(name: str) -> bool:
     return name in binary_keywords
 
 
+FEATURE_KEYWORDS: dict[str, list[str]] = {
+    "fever": ["fever", "high temperature", "temperature"],
+    "cough": ["cough", "dry cough", "wet cough"],
+    "headache": ["headache", "head pain", "migraine"],
+    "nausea": ["nausea", "nauseous"],
+    "vomiting": ["vomit", "vomiting", "threw up"],
+    "fatigue": ["fatigue", "tired", "weakness", "weak"],
+    "sore_throat": ["sore throat", "throat pain"],
+    "chills": ["chills", "shivering"],
+    "body_pain": ["body pain", "body ache", "muscle pain", "joint pain"],
+    "loss_of_appetite": ["loss of appetite", "no appetite", "not hungry"],
+    "abdominal_pain": ["abdominal pain", "stomach pain", "belly pain"],
+    "diarrhea": ["diarrhea", "loose motions", "loose stool"],
+    "sweating": ["sweating", "sweaty"],
+    "rapid_breathing": ["rapid breathing", "shortness of breath", "breathless", "breathing fast"],
+    "dizziness": ["dizziness", "dizzy", "lightheaded"],
+}
+
+
+CONDITION_DESCRIPTIONS: dict[str, str] = {
+    "Typhoid": "May involve persistent fever, body weakness, and digestive discomfort.",
+    "Malaria": "Often linked with fever, chills, sweating, and fatigue in endemic regions.",
+    "Pneumonia": "Can involve cough, breathing difficulty, fever, and chest discomfort.",
+}
+
+
+def parse_detected_symptoms(symptom_text: str) -> list[str]:
+    normalized = symptom_text.lower()
+    detected: list[str] = []
+    for feature_name, keywords in FEATURE_KEYWORDS.items():
+        if any(keyword in normalized for keyword in keywords):
+            detected.append(feature_name.replace("_", " "))
+    return detected
+
+
+def build_feature_payload_from_text(symptom_text: str, feature_names: list[str]) -> dict[str, float]:
+    normalized = symptom_text.lower()
+    payload = {name: 0.0 for name in feature_names}
+
+    for feature_name in feature_names:
+        keywords = FEATURE_KEYWORDS.get(feature_name)
+        if not keywords:
+            continue
+        payload[feature_name] = 1.0 if any(keyword in normalized for keyword in keywords) else 0.0
+
+    return payload
+
+
+def build_precautions(predicted_label: str) -> list[str]:
+    common = [
+        "Drink clean and safe water regularly.",
+        "Take adequate rest and avoid heavy physical work.",
+        "Eat light, nutritious meals and avoid outside oily food.",
+        "Monitor fever and hydration through the day.",
+    ]
+    by_condition = {
+        "Typhoid": [
+            "Use boiled water only and maintain strict food hygiene.",
+            "Avoid raw foods until symptoms improve.",
+        ],
+        "Malaria": [
+            "Use mosquito protection, especially at night.",
+            "Seek a blood test confirmation at the nearest clinic.",
+        ],
+        "Pneumonia": [
+            "Avoid dust and smoke exposure.",
+            "Keep breathing warm and stay in a ventilated room.",
+        ],
+    }
+    return common + by_condition.get(predicted_label, [])
+
+
+def build_doctor_warnings(age_group: str) -> list[str]:
+    warnings = [
+        "High fever lasting more than 2 days.",
+        "Breathing difficulty, chest pain, or persistent vomiting.",
+        "Severe weakness, confusion, or fainting.",
+        "No improvement after basic care.",
+    ]
+    if age_group in {"Child (0-12)", "Senior (50+)"}:
+        warnings.append("For children and seniors, consult a doctor early even for mild symptoms.")
+    return warnings
+
+
+def predict_with_feature_map(
+    model: Any,
+    feature_names: list[str],
+    label_names: list[str],
+    feature_values: dict[str, float],
+) -> tuple[str, pd.DataFrame]:
+    row = pd.DataFrame([[float(feature_values[name]) for name in feature_names]], columns=feature_names)
+    pred_raw = model.predict(row)[0]
+
+    if label_names and str(pred_raw).isdigit():
+        pred_idx = int(pred_raw)
+        prediction = label_names[pred_idx] if 0 <= pred_idx < len(label_names) else str(pred_raw)
+    else:
+        prediction = str(pred_raw)
+
+    if hasattr(model, "predict_proba"):
+        probs = model.predict_proba(row)[0]
+        class_names = (
+            label_names
+            if label_names and len(label_names) == len(probs)
+            else [f"Class {i}" for i in range(len(probs))]
+        )
+        prob_df = pd.DataFrame({"label": class_names, "probability": probs}).sort_values("probability", ascending=False)
+    else:
+        prob_df = pd.DataFrame({"label": [prediction], "probability": [1.0]})
+
+    return prediction, prob_df
+
+
 def run_streamlit_ui() -> None:
     # Streamlit rejects invalid page_icon values; use a valid emoji and fallback safely.
     try:
@@ -524,34 +637,78 @@ def run_streamlit_ui() -> None:
         if "test_accuracy" in metrics:
             st.write(f"Test accuracy: {float(metrics['test_accuracy']):.4f}")
 
-    st.subheader("Enter Symptoms")
-    st.write("Set each symptom as present (1) or absent (0), then click Predict.")
+    quick_tab, manual_tab = st.tabs(["Symptom Text (Recommended)", "Manual Feature Input"])
 
-    cols = st.columns(3)
-    input_values: dict[str, float] = {}
-    for idx, feature in enumerate(feature_names):
-        with cols[idx % 3]:
-            label = feature.replace("_", " ")
-            if is_binary_feature(feature):
-                input_values[feature] = 1.0 if st.checkbox(label, value=False) else 0.0
-            else:
-                input_values[feature] = float(st.number_input(label, value=0.0))
+    with quick_tab:
+        st.subheader("Symptom Report")
+        symptom_text = st.text_area(
+            "Describe symptoms",
+            placeholder="Example: fever, chills, headache, body pain, tiredness",
+            height=120,
+        )
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            age_group = st.selectbox("Age Group", ["Child (0-12)", "Adult (13-49)", "Senior (50+)"])
+        with col2:
+            gender = st.selectbox("Gender", ["Female", "Male", "Other"])
+        with col3:
+            location = st.text_input("Location", placeholder="Village / District")
 
-    if st.button("Predict", type="primary"):
-        row = pd.DataFrame([input_values], columns=feature_names)
-        pred_idx = model.predict(row)[0]
-        if label_names and isinstance(pred_idx, (int, float)):
-            pred_int = int(pred_idx)
-            prediction = label_names[pred_int] if 0 <= pred_int < len(label_names) else str(pred_idx)
-        else:
-            prediction = str(pred_idx)
+        if st.button("Analyze Symptoms", type="primary"):
+            if not symptom_text.strip():
+                st.warning("Please enter symptoms to analyze.")
+                st.stop()
 
-        st.success(f"Predicted disease: {prediction}")
+            feature_values = build_feature_payload_from_text(symptom_text, feature_names)
+            prediction, prob_df = predict_with_feature_map(model, feature_names, label_names, feature_values)
+            detected = parse_detected_symptoms(symptom_text)
 
-        if hasattr(model, "predict_proba"):
-            probs = model.predict_proba(row)[0]
-            class_names = label_names if label_names and len(label_names) == len(probs) else [f"Class {i}" for i in range(len(probs))]
-            prob_df = pd.DataFrame({"label": class_names, "probability": probs}).sort_values("probability", ascending=False)
+            st.success(f"Predicted disease: {prediction}")
+            st.caption(f"Profile: {age_group}, {gender}, {location or 'Location not provided'}")
+
+            st.subheader("Detected Symptoms")
+            st.write(", ".join(detected) if detected else "No known symptom keyword detected from this description.")
+
+            st.subheader("Possible Conditions")
+            top_conditions = prob_df.head(3)
+            for _, row in top_conditions.iterrows():
+                label = str(row["label"])
+                confidence = float(row["probability"]) * 100.0
+                description = CONDITION_DESCRIPTIONS.get(
+                    label,
+                    "Prediction based on symptoms recognized by the trained model.",
+                )
+                st.write(f"- {label}: {description} Confidence: {confidence:.1f}%")
+
+            st.subheader("Recommended Precautions")
+            for item in build_precautions(prediction):
+                st.write(f"- {item}")
+
+            st.subheader("When To See A Doctor")
+            for warning in build_doctor_warnings(age_group):
+                st.write(f"- {warning}")
+
+            st.subheader("Prediction Confidence")
+            st.dataframe(prob_df, use_container_width=True)
+            st.bar_chart(prob_df.set_index("label"))
+
+    with manual_tab:
+        st.subheader("Manual Feature Input")
+        st.write("Set each symptom as present (1) or absent (0), then click Predict.")
+
+        cols = st.columns(3)
+        input_values: dict[str, float] = {}
+        for idx, feature in enumerate(feature_names):
+            with cols[idx % 3]:
+                label = feature.replace("_", " ")
+                if is_binary_feature(feature):
+                    input_values[feature] = 1.0 if st.checkbox(label, value=False, key=f"manual_{feature}") else 0.0
+                else:
+                    input_values[feature] = float(st.number_input(label, value=0.0, key=f"manual_num_{feature}"))
+
+        if st.button("Predict (Manual)", key="predict_manual"):
+            prediction, prob_df = predict_with_feature_map(model, feature_names, label_names, input_values)
+            st.success(f"Predicted disease: {prediction}")
             st.subheader("Prediction Confidence")
             st.dataframe(prob_df, use_container_width=True)
             st.bar_chart(prob_df.set_index("label"))
